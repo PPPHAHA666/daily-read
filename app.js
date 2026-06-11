@@ -123,10 +123,10 @@ async function fetchAllData() {
     ]);
 
     // 获取新闻
-    await fetchNews();
+    const newsData = await fetchNews();
 
-    // 保存数据
-    saveData();
+    // 统一保存所有数据
+    saveData(newsData);
 
     // 更新显示时间
     updateTime.textContent = `更新于 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
@@ -372,7 +372,7 @@ async function useBackupNews() {
   // 为每条新闻分配日期（最近3天内）
   const newsWithDates = selectedNews.map((news, i) => {
     const newsDate = new Date(today);
-    newsDate.setDate(today.getDate() - (2 - i)); // 分别为前天、昨天、今天
+    newsDate.setDate(today.getDate() - (2 - i));
     return {
       ...news,
       date: formatDate(newsDate)
@@ -382,8 +382,8 @@ async function useBackupNews() {
   // 渲染新闻列表
   renderNewsList(newsWithDates);
 
-  // 保存到缓存
-  saveNewsToCache(newsWithDates);
+  // 返回新闻数据，由 saveData 统一保存
+  return newsWithDates;
 }
 
 // 渲染新闻列表
@@ -403,13 +403,6 @@ function renderNewsList(newsItems) {
     `;
     newsList.appendChild(item);
   });
-}
-
-// 保存新闻到缓存
-function saveNewsToCache(newsItems) {
-  const cached = JSON.parse(localStorage.getItem('dailyData') || '{}');
-  cached.newsList = newsItems;
-  localStorage.setItem('dailyData', JSON.stringify(cached));
 }
 
 // 新闻历史记录
@@ -436,7 +429,7 @@ function simpleHash(str) {
 }
 
 // 保存数据到本地存储
-function saveData() {
+function saveData(newsData) {
   const data = {
     date: new Date().toDateString(),
     lastUpdate: Date.now(),
@@ -449,7 +442,8 @@ function saveData() {
     tip: {
       category: tipCategory.textContent,
       text: tipText.textContent
-    }
+    },
+    newsList: newsData || []
   };
 
   localStorage.setItem('dailyData', JSON.stringify(data));
