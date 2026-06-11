@@ -312,6 +312,41 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.news-item-summary.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+
+.news-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--spacing-xs);
+  padding: 4px 0;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.news-expand-btn:hover {
+  opacity: 0.7;
+}
+
+.news-expand-btn .arrow {
+  display: inline-block;
+  transition: transform var(--transition-normal);
+  font-size: 0.7rem;
+}
+
+.news-expand-btn.expanded .arrow {
+  transform: rotate(180deg);
 }
 
 /* Install Prompt */

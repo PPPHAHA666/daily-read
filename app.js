@@ -390,7 +390,7 @@ async function useBackupNews() {
 function renderNewsList(newsItems) {
   newsList.innerHTML = '';
 
-  newsItems.forEach((news) => {
+  newsItems.forEach((news, index) => {
     const item = document.createElement('div');
     item.className = 'news-item';
     item.innerHTML = `
@@ -399,10 +399,29 @@ function renderNewsList(newsItems) {
         <span class="news-item-source">${news.source}</span>
         <span class="news-item-date">${news.date}</span>
       </div>
-      <p class="news-item-summary">${news.summary}</p>
+      <p class="news-item-summary" id="news-summary-${index}">${news.summary}</p>
+      <button class="news-expand-btn" id="news-expand-${index}" onclick="toggleNewsExpand(${index})">
+        展开全文 <span class="arrow">▼</span>
+      </button>
     `;
     newsList.appendChild(item);
   });
+}
+
+// 展开/收起新闻
+function toggleNewsExpand(index) {
+  const summary = document.getElementById(`news-summary-${index}`);
+  const btn = document.getElementById(`news-expand-${index}`);
+
+  if (summary.classList.contains('expanded')) {
+    summary.classList.remove('expanded');
+    btn.classList.remove('expanded');
+    btn.innerHTML = '展开全文 <span class="arrow">▼</span>';
+  } else {
+    summary.classList.add('expanded');
+    btn.classList.add('expanded');
+    btn.innerHTML = '收起 <span class="arrow">▼</span>';
+  }
 }
 
 // 新闻历史记录
