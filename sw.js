@@ -1,5 +1,5 @@
 // 每日晨读 - Service Worker
-const CACHE_NAME = 'daily-read-v1';
+const CACHE_NAME = 'daily-read-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,8 +7,7 @@ const ASSETS_TO_CACHE = [
   '/app.js',
   '/manifest.json',
   '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap'
+  '/icons/icon-512.png'
 ];
 
 // 安装事件 - 缓存静态资源
@@ -54,12 +53,13 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 请求拦截 - Cache First 策略
+// 请求拦截 - Network First 策略（优先网络，确保用户看到最新内容）
 self.addEventListener('fetch', (event) => {
-  // 只处理同源请求
+  // 只处理同源请求和字体请求
   if (!event.request.url.startsWith(self.location.origin) &&
       !event.request.url.startsWith('https://fonts.googleapis.com') &&
-      !event.request.url.startsWith('https://fonts.gstatic.com')) {
+      !event.request.url.startsWith('https://fonts.gstatic.com') &&
+      !event.request.url.startsWith('https://wttr.in')) {
     return;
   }
 
@@ -69,60 +69,34 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // 返回缓存，同时更新缓存（后台更新）
-          event.waitUntil(updateCache(event.request));
-          return cachedResponse;
+    fetch(event.request)
+      .then((response) => {
+        // 网络请求成功，缓存并返回
+        if (response && (response.status === 200 || response.type === 'opaque')) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseClone);
+            });
         }
-
-        // 网络请求
-        return fetch(event.request)
-          .then((response) => {
-            // 检查是否为有效响应
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              // 对于跨域请求，直接返回
-              if (response && response.type === 'opaque') {
-                // 缓存跨域资源（如字体）
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME)
-                  .then((cache) => {
-                    cache.put(event.request, responseClone);
-                  });
-              }
-              return response;
+        return response;
+      })
+      .catch(() => {
+        // 网络请求失败，从缓存读取
+        return caches.match(event.request)
+          .then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
             }
-
-            // 缓存新资源
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseClone);
-              });
-
-            return response;
-          })
-          .catch(() => {
-            // 网络请求失败，返回离线页面（如果有）
-            return caches.match('/index.html');
+            // 如果请求的是页面，返回缓存的首页
+            if (event.request.mode === 'navigate') {
+              return caches.match('/index.html');
+            }
+            return new Response('离线不可用', { status: 503 });
           });
       })
   );
 });
-
-// 后台更新缓存
-async function updateCache(request) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(request, response);
-    }
-  } catch (error) {
-    // 忽略更新失败
-  }
-}
 
 // 处理推送通知（预留）
 self.addEventListener('push', (event) => {
