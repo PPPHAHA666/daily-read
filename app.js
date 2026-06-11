@@ -627,15 +627,42 @@ async function registerServiceWorker() {
         const newWorker = registration.installing;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // 有新版本可用
-            showError('有新版本可用，请刷新页面更新');
+            // 显示更新提示条
+            showUpdateBar();
           }
         });
+      });
+
+      // 每次页面获得焦点时检查更新
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          registration.update();
+        }
       });
     } catch (error) {
       console.warn('Service Worker 注册失败:', error);
     }
   }
+}
+
+// 显示版本更新提示
+function showUpdateBar() {
+  const updateBar = document.getElementById('update-bar');
+  const updateBtn = document.getElementById('update-btn');
+  updateBar.hidden = false;
+
+  updateBtn.addEventListener('click', () => {
+    // 通知新SW立即激活，然后刷新页面
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
+    // 发送消息给等待中的SW，让它跳过等待立即激活
+    navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' });
+    // 兜底：1秒后直接刷新
+    setTimeout(() => window.location.reload(), 1000);
+  });
 }
 
 // 刷新按钮（如果有新版本）

@@ -1,5 +1,5 @@
 // 每日晨读 - Service Worker
-const CACHE_NAME = 'daily-read-v3';
+const CACHE_NAME = 'daily-read-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -51,6 +51,13 @@ self.addEventListener('activate', (event) => {
         return self.clients.claim();
       })
   );
+});
+
+// 处理SKIP_WAITING消息，立即激活新版本
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // 请求拦截 - Network First 策略（优先网络，确保用户看到最新内容）

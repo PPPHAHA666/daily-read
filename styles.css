@@ -403,6 +403,53 @@ body {
   color: white;
 }
 
+/* Update Bar */
+.update-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-text);
+  color: white;
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  z-index: 1002;
+  animation: slideUpBar 0.3s ease-out;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.update-bar span {
+  font-size: 0.9rem;
+}
+
+.update-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.update-btn:hover {
+  background: var(--color-primary-light);
+}
+
+@keyframes slideUpBar {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 /* Error Toast */
 .error-toast {
   position: fixed;
