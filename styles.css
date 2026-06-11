@@ -304,6 +304,22 @@ body {
   font-weight: 500;
 }
 
+.news-item-link {
+  text-decoration: none;
+  color: var(--color-text);
+  transition: color var(--transition-fast);
+}
+
+.news-item-link:hover {
+  color: var(--color-primary);
+}
+
+.news-item-points,
+.news-item-comments {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+}
+
 .news-item-summary {
   font-size: 0.85rem;
   color: var(--color-text-secondary);

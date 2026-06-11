@@ -1,5 +1,5 @@
 // 每日晨读 - Service Worker
-const CACHE_NAME = 'daily-read-v2';
+const CACHE_NAME = 'daily-read-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -59,7 +59,8 @@ self.addEventListener('fetch', (event) => {
   if (!event.request.url.startsWith(self.location.origin) &&
       !event.request.url.startsWith('https://fonts.googleapis.com') &&
       !event.request.url.startsWith('https://fonts.gstatic.com') &&
-      !event.request.url.startsWith('https://wttr.in')) {
+      !event.request.url.startsWith('https://wttr.in') &&
+      !event.request.url.startsWith('https://hn.algolia.com')) {
     return;
   }
 

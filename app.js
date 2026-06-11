@@ -232,10 +232,59 @@ function generateTip() {
   return Promise.resolve();
 }
 
-// 获取AI新闻
+// 获取AI新闻 - 优先HackerNews API，失败则用本地库
 async function fetchNews() {
-  // 直接使用本地新闻库
+  try {
+    const onlineNews = await fetchHackerNews();
+    if (onlineNews && onlineNews.length > 0) {
+      return onlineNews;
+    }
+  } catch (error) {
+    console.warn('HackerNews获取失败，使用本地新闻库:', error);
+  }
   return useBackupNews();
+}
+
+// 从HackerNews获取AI相关新闻
+async function fetchHackerNews() {
+  // 搜索AI相关最新帖子
+  const searchURL = 'https://hn.algolia.com/api/v1/search?query=AI+artificial+intelligence&tags=story&hitsPerPage=10&numericFilters=created_at_i>' + Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
+
+  const response = await fetch(searchURL, {
+    signal: AbortSignal.timeout(8000)
+  });
+
+  if (!response.ok) throw new Error('HackerNews API响应失败');
+
+  const data = await response.json();
+
+  if (!data.hits || data.hits.length === 0) throw new Error('无搜索结果');
+
+  // 筛选得分较高的新闻，取前3条
+  const sorted = data.hits
+    .filter(hit => hit.title && hit.points > 5)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 3);
+
+  if (sorted.length === 0) throw new Error('无高质量结果');
+
+  const newsItems = sorted.map((hit, i) => {
+    const newsDate = new Date(hit.created_at);
+    return {
+      title: hit.title,
+      source: 'HackerNews',
+      date: formatDate(newsDate),
+      summary: hit.title + (hit.url ? '' : ' (讨论帖)'),
+      url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+      points: hit.points,
+      comments: hit.num_comments || 0
+    };
+  });
+
+  // 渲染新闻列表
+  renderNewsList(newsItems);
+
+  return newsItems;
 }
 
 // 格式化日期为 MM/DD
@@ -393,11 +442,23 @@ function renderNewsList(newsItems) {
   newsItems.forEach((news, index) => {
     const item = document.createElement('div');
     item.className = 'news-item';
+
+    // 如果有外部链接，标题可点击
+    const titleHTML = news.url
+      ? `<a class="news-item-title news-item-link" href="${news.url}" target="_blank" rel="noopener">${news.title}</a>`
+      : `<h3 class="news-item-title">${news.title}</h3>`;
+
+    // HackerNews来源显示点赞和评论数
+    const metaExtra = news.points !== undefined
+      ? `<span class="news-item-points">▲ ${news.points}</span><span class="news-item-comments">💬 ${news.comments}</span>`
+      : '';
+
     item.innerHTML = `
-      <h3 class="news-item-title">${news.title}</h3>
+      ${titleHTML}
       <div class="news-item-meta">
         <span class="news-item-source">${news.source}</span>
         <span class="news-item-date">${news.date}</span>
+        ${metaExtra}
       </div>
       <p class="news-item-summary" id="news-summary-${index}">${news.summary}</p>
       <button class="news-expand-btn" id="news-expand-${index}" onclick="toggleNewsExpand(${index})">
