@@ -40,9 +40,6 @@ const TIPS = [
   { text: "差异化壁垒：别人只会用AI出图，你能打通AI生成→自动加工→出产品的全流程，这是你的核心优势", category: "创业心法" }
 ];
 
-// 新闻缓存（最近7天）
-let newsHistory = [];
-
 // DOM 元素
 const loadingOverlay = document.getElementById('loading');
 const mainContent = document.getElementById('main-content');
@@ -115,17 +112,16 @@ function shouldUpdate() {
 // 获取所有数据
 async function fetchAllData() {
   try {
-    // 并行获取天气和建议
+    // 生成今日建议（同步）
+    generateTip();
+
+    // 并行获取天气和新闻
     await Promise.all([
       fetchWeather(),
-      generateTip()
+      fetchNews().then(newsData => {
+        saveData(newsData);
+      })
     ]);
-
-    // 获取新闻
-    const newsData = await fetchNews();
-
-    // 统一保存所有数据
-    saveData(newsData);
 
     // 更新显示时间
     updateTime.textContent = `更新于 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
@@ -209,7 +205,9 @@ function getWeatherIcon(code) {
 
 // 获取穿衣建议
 function getWeatherSuggestion(temp, code) {
-  const tempNum = parseInt(temp);
+  const tempNum = parseInt(temp, 10);
+
+  if (isNaN(tempNum)) return '🌤️ 天气数据更新中';
 
   if (tempNum < 5) return '🥶 天气寒冷，注意保暖';
   if (tempNum < 15) return '🧥 早晚温差大，建议穿外套';
@@ -218,7 +216,7 @@ function getWeatherSuggestion(temp, code) {
   return '☀️ 阳光明媚，注意防晒';
 }
 
-// 生成AI建议
+// 生成今日建议（基于日期种子从预设库选取）
 function generateTip() {
   const now = new Date();
   const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -227,8 +225,6 @@ function generateTip() {
 
   tipCategory.textContent = tip.category;
   tipText.textContent = tip.text;
-
-  return Promise.resolve();
 }
 
 // 获取AI新闻 - 优先中文RSS源，再HackerNews，最后本地库
@@ -318,7 +314,7 @@ async function fetchRSSNews() {
 // 从HackerNews获取AI相关新闻
 async function fetchHackerNews() {
   // 搜索AI相关最新帖子
-  const searchURL = 'https://hn.algolia.com/api/v1/search?query=AI+artificial+intelligence&tags=story&hitsPerPage=10&numericFilters=created_at_i>' + Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
+  const searchURL = 'https://hn.algolia.com/api/v1/search?query=AI+artificial+intelligence&tags=story&hitsPerPage=10&numericFilters=created_at_i>' + (Math.floor(Date.now() / 1000) - 7 * 24 * 3600);
 
   const response = await fetch(searchURL, {
     signal: AbortSignal.timeout(8000)
@@ -555,29 +551,6 @@ function toggleNewsExpand(index) {
   }
 }
 
-// 新闻历史记录
-function addToNewsHistory(title) {
-  const hash = simpleHash(title);
-  newsHistory.push(hash);
-
-  // 只保留最近7天
-  if (newsHistory.length > 7) {
-    newsHistory.shift();
-  }
-
-  localStorage.setItem('newsHistory', JSON.stringify(newsHistory));
-}
-
-// 简单哈希
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return hash;
-}
-
 // 保存数据到本地存储
 function saveData(newsData) {
   const data = {
@@ -715,23 +688,27 @@ async function registerServiceWorker() {
   }
 }
 
-// 显示版本更新提示
+// 显示版本更新提示（确保只绑定一次事件）
+let updateBarShown = false;
 function showUpdateBar() {
+  if (updateBarShown) return;
+  updateBarShown = true;
+
   const updateBar = document.getElementById('update-bar');
   const updateBtn = document.getElementById('update-btn');
   updateBar.hidden = false;
 
+  let updating = false;
   updateBtn.addEventListener('click', () => {
-    // 通知新SW立即激活，然后刷新页面
-    if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
-    }
-    // 发送消息给等待中的SW，让它跳过等待立即激活
+    if (updating) return;
+    updating = true;
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    }, { once: true });
     navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' });
     // 兜底：1秒后直接刷新
-    setTimeout(() => window.location.reload(), 1000);
+    setTimeout(() => window.location.reload(), 1500);
   });
 }
 

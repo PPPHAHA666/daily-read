@@ -45,7 +45,6 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   background: linear-gradient(180deg, var(--color-bg-start) 0%, var(--color-bg-end) 50%, var(--color-bg-end) 100%);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -538,7 +537,7 @@ body {
     font-size: 1rem;
   }
 
-  .news-title {
+  .news-item-title {
     font-size: 1rem;
   }
 }
