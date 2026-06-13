@@ -1,5 +1,5 @@
 // 每日晨读 - Service Worker
-const CACHE_NAME = 'daily-read-v4';
+const CACHE_NAME = 'daily-read-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
