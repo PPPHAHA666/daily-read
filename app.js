@@ -231,17 +231,88 @@ function generateTip() {
   return Promise.resolve();
 }
 
-// 获取AI新闻 - 优先HackerNews API，失败则用本地库
+// 获取AI新闻 - 优先中文RSS源，再HackerNews，最后本地库
 async function fetchNews() {
   try {
-    const onlineNews = await fetchHackerNews();
-    if (onlineNews && onlineNews.length > 0) {
-      return onlineNews;
+    const rssNews = await fetchRSSNews();
+    if (rssNews && rssNews.length > 0) {
+      return rssNews;
     }
   } catch (error) {
-    console.warn('HackerNews获取失败，使用本地新闻库:', error);
+    console.warn('RSS新闻获取失败:', error);
   }
+
+  try {
+    const hnNews = await fetchHackerNews();
+    if (hnNews && hnNews.length > 0) {
+      return hnNews;
+    }
+  } catch (error) {
+    console.warn('HackerNews获取失败:', error);
+  }
+
   return useBackupNews();
+}
+
+// 从中文RSS源获取AI新闻
+async function fetchRSSNews() {
+  // 使用RSS2JSON服务解析RSS（免费，无需API Key）
+  const rssSources = [
+    { url: 'https://36kr.com/feed-newsflash', name: '36氪' },
+    { url: 'https://www.ithome.com/rss/', name: 'IT之家' }
+  ];
+
+  const allItems = [];
+
+  for (const source of rssSources) {
+    try {
+      const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}&count=20`;
+      const response = await fetch(rss2jsonUrl, {
+        signal: AbortSignal.timeout(6000)
+      });
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      if (data.status !== 'ok' || !data.items) continue;
+
+      // 筛选AI相关新闻
+      const aiKeywords = ['AI', '人工智能', '大模型', 'GPT', 'Claude', 'Gemini', 'LLM', 'OpenAI', 'DeepSeek', 'Qwen', '通义', '智谱', '百度', '机器人', '芯片', '自动驾驶', '机器学习', '深度学习', 'AIGC', 'Agent', '智能体', '具身', 'TinyML', '嵌入式'];
+
+      const filtered = data.items.filter(item => {
+        const text = (item.title + ' ' + (item.description || '')).toLowerCase();
+        return aiKeywords.some(kw => text.includes(kw.toLowerCase()));
+      });
+
+      filtered.forEach(item => {
+        const pubDate = new Date(item.pubDate);
+        const now = new Date();
+        const daysDiff = Math.floor((now - pubDate) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff <= 7) {
+          allItems.push({
+            title: item.title.replace(/<[^>]*>/g, ''),
+            source: source.name,
+            date: formatDate(pubDate),
+            summary: (item.description || item.title).replace(/<[^>]*>/g, '').substring(0, 150),
+            url: item.link,
+            pubTimestamp: pubDate.getTime()
+          });
+        }
+      });
+    } catch (e) {
+      console.warn(`RSS源 ${source.name} 获取失败:`, e);
+    }
+  }
+
+  if (allItems.length === 0) throw new Error('无AI相关新闻');
+
+  // 按时间排序，取最新3条
+  allItems.sort((a, b) => b.pubTimestamp - a.pubTimestamp);
+  const top3 = allItems.slice(0, 3);
+
+  renderNewsList(top3);
+  return top3;
 }
 
 // 从HackerNews获取AI相关新闻
